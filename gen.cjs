@@ -1,18 +1,21 @@
 const { readdirSync } = require('fs')
 const { writeFileSync } = require('fs-extra')
+const path = require('path')
 
 async function main() {
   const files = readdirSync('./fixtures')
   const items = []
   for (let idx = 0; idx < files.length; idx++) {
     if (idx == 0) continue
-    const file_a = files[idx - 1]
-    const file_b = files[idx]
+    let file_a = files[idx - 1]
+    let file_b = files[idx]
     const name = `${file_a} - ${file_b}`
+    file_a = path.resolve(__dirname, "./fixtures", file_a);
+    file_b = path.resolve(__dirname, "./fixtures", file_b);
     const item = `
     it(${JSON.stringify(name)}, async () => {
-      const file_a = ${JSON.stringify('../../fixtures/' + file_a)}
-      const file_b = ${JSON.stringify('../../fixtures/' + file_b)}
+      const file_a = ${JSON.stringify(file_a)}
+      const file_b = ${JSON.stringify(file_b)}
       const text_a = (await readFile(file_a)).toString().replace(/\\r\\n/g, '\\n')
       const text_b = (await readFile(file_b)).toString().replace(/\\r\\n/g, '\\n')
       await assertTextChange(text_a, text_b)

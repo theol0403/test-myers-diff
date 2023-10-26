@@ -19,5 +19,7 @@ jobs:
           cache: 'npm'
       - name: npm install
         run: npm ci --silent
+      - name: gen test
+        run: npm run gen
       - name: Test
         run: npm run test

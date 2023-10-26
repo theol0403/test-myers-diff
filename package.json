@@ -28,13 +28,14 @@
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile",
     "test": "node ./out/test/runTest.js",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "gen": "node ./gen.cjs"
   },
   "devDependencies": {
     "@types/fs-extra": "^11.0.3",
     "@types/glob": "^7.1.1",
     "@types/mocha": "^10.0.1",
-    "@types/node": "^16.18.34",
+    "@types/node": "^16.18.59",
     "@types/vscode": "^1.83.0",
     "@typescript-eslint/eslint-plugin": "^6.7.0",
     "@typescript-eslint/parser": "^6.7.0",
