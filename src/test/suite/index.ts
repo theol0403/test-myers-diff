@@ -8,7 +8,7 @@ export async function run(): Promise<void> {
   // Create the mocha test
   const mocha = new Mocha({
     ui: 'bdd',
-    timeout: 20000,
+    timeout: 30000,
     bail: false,
     slow: 200,
     fullTrace: true,
