@@ -8,8 +8,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # os: [macos-latest, ubuntu-latest, windows-latest]
-        os: [macos-latest, windows-latest]
+        os: [macos-latest, ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - name: ??
@@ -26,4 +25,6 @@ jobs:
       - name: gen test
         run: npm run gen
       - name: Test
-        run: npm run test
+        uses: GabrielBB/xvfb-action@v1
+        with:
+          run: npm run test
