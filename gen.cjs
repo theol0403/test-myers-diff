@@ -50,6 +50,7 @@ class LazyLineLengths {
   private cache: number[] = [];
   private cacheLength = 0;
   private generator: Generator<number>;
+  private N = 100; // how many lines to do a linear search on before switching to binary search
 
   constructor(text: string) {
     this.lines = text.split("\\n");
@@ -77,10 +78,23 @@ class LazyLineLengths {
   // given an array of cumulative line lengths, find the line number given a character position after a known start line.
   // return the line as well as the number of characters until the start of the line.
   findLine(pos: number, startLine: number): [number, number] {
+    if (startLine != 0) {
+      for (
+        let i = startLine;
+        i < Math.min(startLine + this.N, this.lines.length);
+        i++
+      ) {
+        if (this.getLengthAt(i) > pos) {
+          const char = i > 0 ? this.getLengthAt(i - 1) : 0;
+          return [i, char];
+        }
+      }
+    }
+
     let low = startLine,
       high = this.lines.length - 1;
     while (low < high) {
-      const mid = low + Math.floor((high - low) / 8); // can adjust pivot point based on probability of diffs being close together
+      const mid = Math.floor((low + high) / 2); // can adjust pivot point based on probability of diffs being close together
       if (this.getLengthAt(mid) <= pos) {
         low = mid + 1;
       } else {
