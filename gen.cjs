@@ -55,7 +55,7 @@ function findLine(
   let low = startLine,
     high = lineLengths.length - 1;
   while (low < high) {
-    const mid = Math.floor((low + high) / 2);
+    const mid = Math.floor((low + high) / 4);
     if (lineLengths[mid] <= pos) {
       low = mid + 1;
     } else {
