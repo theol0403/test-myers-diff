@@ -123,7 +123,11 @@ describe('Test', async () => {
     await commands.executeCommand('workbench.action.closeAllEditors');
   });
 
+  const startTime = Date.now();
+
   ${items.join("\n")}
+
+  console.log('Tests completed in ' + (Date.now() - startTime) + 'ms');
 
 });
   `;
