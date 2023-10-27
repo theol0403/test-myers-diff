@@ -45,31 +45,57 @@ interface DocumentChange {
   rangeLength: number
 }
 
-// given an array of cumulative line lengths, find the line number given a character position after a known start line.
-// return the line as well as the number of characters until the start of the line.
-function findLine(
-  lineLengths: number[],
-  pos: number,
-  startLine: number
-): [number, number] {
-  let low = startLine,
-    high = lineLengths.length - 1;
-  while (low < high) {
-    const mid = Math.floor((low + high) / 4);
-    if (lineLengths[mid] <= pos) {
-      low = mid + 1;
-    } else {
-      high = mid;
+class LazyLineLengths {
+  private lines: string[];
+  private cache: number[] = [];
+  private cacheLength = 0;
+  private generator: Generator<number>;
+
+  constructor(text: string) {
+    this.lines = text.split("\\n");
+    this.cache = new Array(this.lines.length);
+    this.generator = this.accumulateLengths();
+  }
+
+  private *accumulateLengths(): Generator<number> {
+    let cumulativeLength = 0;
+    for (let i = 0; i < this.lines.length; i++) {
+      cumulativeLength += this.lines[i].length + 1;
+      this.cache[i] = cumulativeLength;
+      this.cacheLength++;
+      yield cumulativeLength;
     }
   }
-  const line = low; // adjust because of the extra count at the beginning
-  const char = line > 0 ? lineLengths[line - 1] : 0;
-  return [line, char];
+
+  getLengthAt(line: number): number {
+    while (this.cacheLength <= line) {
+      this.generator.next();
+    }
+    return this.cache[line];
+  }
+
+  // given an array of cumulative line lengths, find the line number given a character position after a known start line.
+  // return the line as well as the number of characters until the start of the line.
+  findLine(pos: number, startLine: number): [number, number] {
+    let low = startLine,
+      high = this.lines.length - 1;
+    while (low < high) {
+      const mid = Math.floor((low + high) / 2); // can adjust pivot point based on probability of diffs being close together
+      if (this.getLengthAt(mid) <= pos) {
+        low = mid + 1;
+      } else {
+        high = mid;
+      }
+    }
+    const char = low > 0 ? this.getLengthAt(low - 1) : 0;
+    return [low, char];
+  }
 }
 
 // fast-myers-diff accepts a raw 1D string, and outputs a list of operations to apply to the buffer.
 // However, we must compute the line and character positions of the operations ourselves.
-// Assuming the operations are sequential, we can keep a "cursor" which keeps a running total of the number of characters before a given line.
+// Assuming the operations are sequential, we can use a binary search to find the line number given a character position,
+// with the search space being the cumulative line lengths, bounded on the left by the last line.
 // Then, given a character position, we can start counting from the cursor to find the line number, and the remainder is the character position on the line.
 function* calcDiffWithPosition(
   oldText: string,
@@ -77,14 +103,11 @@ function* calcDiffWithPosition(
 ): Generator<DocumentChange> {
   const patch = calcPatch(oldText, newText);
   // generate prefix sum of line lengths (accumulate the length)
-  const lineLengths = oldText.split("\\n").map((line) => line.length + 1);
-  for (let i = 1; i < lineLengths.length; i++) {
-    lineLengths[i] += lineLengths[i - 1];
-  }
+  const lineLengths = new LazyLineLengths(oldText);
   let lastLine = 0;
   for (const [start, end, text] of patch) {
-    const [lineStart, charToLineStart] = findLine(lineLengths, start, lastLine);
-    const [lineEnd, charToLineEnd] = findLine(lineLengths, end, lineStart);
+    const [lineStart, charToLineStart] = lineLengths.findLine(start, lastLine);
+    const [lineEnd, charToLineEnd] = lineLengths.findLine(end, lineStart);
     const charStart = start - charToLineStart;
     const charEnd = end - charToLineEnd;
     const range = new Range(
@@ -99,6 +122,7 @@ function* calcDiffWithPosition(
     };
   }
 }
+
 
 
 async function setupEditorWithText(text: string): Promise<TextEditor> {
