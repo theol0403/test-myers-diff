@@ -45,19 +45,25 @@ interface DocumentChange {
   rangeLength: number
 }
 
-// given an array of line lengths, find the line number given a character position after a known start line.
+// given an array of cumulative line lengths, find the line number given a character position after a known start line.
 // return the line as well as the number of characters until the start of the line.
 function findLine(
   lineLengths: number[],
   pos: number,
   startLine: number
 ): [number, number] {
-  let line = startLine;
-  let char = 0;
-  while (line < lineLengths.length && char + lineLengths[line] < pos) {
-    char += lineLengths[line] + 1; // count the newline
-    line++;
+  let low = startLine,
+    high = lineLengths.length - 1;
+  while (low < high) {
+    const mid = Math.floor((low + high) / 2);
+    if (lineLengths[mid] <= pos) {
+      low = mid + 1;
+    } else {
+      high = mid;
+    }
   }
+  const line = low; // adjust because of the extra count at the beginning
+  const char = line > 0 ? lineLengths[line - 1] : 0;
   return [line, char];
 }
 
@@ -70,29 +76,22 @@ function* calcDiffWithPosition(
   newText: string
 ): Generator<DocumentChange> {
   const patch = calcPatch(oldText, newText);
-  const lineLengths = oldText.split("\\n").map((line) => line.length);
-  let cursor = new Position(0, 0);
+  // generate prefix sum of line lengths (accumulate the length)
+  const lineLengths = oldText.split("\\n").map((line) => line.length + 1);
+  for (let i = 1; i < lineLengths.length; i++) {
+    lineLengths[i] += lineLengths[i - 1];
+  }
+  let lastLine = 0;
   for (const [start, end, text] of patch) {
-    const [lineStart, charToLineStart] = findLine(
-      lineLengths,
-      start - cursor.character,
-      cursor.line
-    );
-    const [lineEnd, charToLineEnd] = findLine(
-      lineLengths,
-      end - charToLineStart - cursor.character,
-      lineStart
-    );
-    const charStart = start - charToLineStart - cursor.character;
-    const charEnd = end - charToLineStart - charToLineEnd - cursor.character;
+    const [lineStart, charToLineStart] = findLine(lineLengths, start, lastLine);
+    const [lineEnd, charToLineEnd] = findLine(lineLengths, end, lineStart);
+    const charStart = start - charToLineStart;
+    const charEnd = end - charToLineEnd;
     const range = new Range(
       new Position(lineStart, charStart),
       new Position(lineEnd, charEnd)
     );
-    cursor = new Position(
-      lineEnd,
-      charToLineStart + charToLineEnd + cursor.character
-    );
+    lastLine = lineEnd;
     yield {
       range,
       text,
@@ -100,6 +99,7 @@ function* calcDiffWithPosition(
     };
   }
 }
+
 
 async function setupEditorWithText(text: string): Promise<TextEditor> {
   const doc = await workspace.openTextDocument({ content: text });
