@@ -80,7 +80,7 @@ class LazyLineLengths {
     let low = startLine,
       high = this.lines.length - 1;
     while (low < high) {
-      const mid = Math.floor((low + high) / 2); // can adjust pivot point based on probability of diffs being close together
+      const mid = low + Math.floor((high - low) / 8); // can adjust pivot point based on probability of diffs being close together
       if (this.getLengthAt(mid) <= pos) {
         low = mid + 1;
       } else {
